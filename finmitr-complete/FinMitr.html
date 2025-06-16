@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinMitr - Your Personal Finance Assistant</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="app-logo">
+                    <i class="fas fa-chart-line"></i>
+                    <h1>FinMitr</h1>
+                </div>
+                <p class="login-subtitle">Your Trusted Finance Partner</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="rajesh.kumar@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Remember Me</span>
+                    </label>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">Sign In</button>
+                <div class="divider">or</div>
+                <button type="button" class="btn btn--google" id="googleSignIn">
+                    <i class="fab fa-google"></i>
+                    Continue with Google
+                </button>
+                <p class="signup-link">Don't have an account? <a href="#" id="createAccountLink">Create Account</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="app-container hidden">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <i class="fas fa-chart-line"></i>
+                    <span>FinMitr</span>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" class="nav-link active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#" class="nav-link" data-section="budget"><i class="fas fa-calculator"></i> Budget Tracker</a></li>
+                <li><a href="#" class="nav-link" data-section="goals"><i class="fas fa-bullseye"></i> Goals & Assets</a></li>
+                <li><a href="#" class="nav-link" data-section="income-expenses"><i class="fas fa-exchange-alt"></i> Income & Expenses</a></li>
+                <li><a href="#" class="nav-link" data-section="analysis"><i class="fas fa-chart-bar"></i> Spending Analysis</a></li>
+                <li><a href="#" class="nav-link" data-section="services"><i class="fas fa-concierge-bell"></i> Services</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">RK</div>
+                    <div class="user-info">
+                        <span class="user-name">Rajesh Kumar</span>
+                        <span class="user-location">Mumbai, MH</span>
+                    </div>
+                </div>
+                <button class="btn btn--outline btn--sm" id="logoutBtn">Logout</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <h2>Financial Dashboard</h2>
+                    <div class="language-toggle">
+                        <button class="btn btn--sm btn--outline" id="languageToggle">हिन्दी</button>
+                    </div>
+                </div>
+
+                <!-- Financial Health Score -->
+                <div class="health-score-card">
+                    <div class="score-content">
+                        <div class="score-circle">
+                            <canvas id="scoreChart" width="120" height="120"></canvas>
+                            <div class="score-text">
+                                <span class="score-number">725</span>
+                                <span class="score-label">FinScore</span>
+                            </div>
+                        </div>
+                        <div class="score-details">
+                            <h3>Excellent Financial Health</h3>
+                            <p>Your financial score has improved by 15 points this month</p>
+                            <div class="score-factors">
+                                <div class="factor">
+                                    <span class="factor-label">Savings Rate</span>
+                                    <span class="factor-value good">24%</span>
+                                </div>
+                                <div class="factor">
+                                    <span class="factor-label">Debt Ratio</span>
+                                    <span class="factor-value moderate">26%</span>
+                                </div>
+                                <div class="factor">
+                                    <span class="factor-label">Investment Diversity</span>
+                                    <span class="factor-value good">Good</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon income">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">₹18,50,000</span>
+                            <span class="stat-label">Net Worth</span>
+                            <span class="stat-change positive">+12.5%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon expense">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">₹65,000</span>
+                            <span class="stat-label">Monthly Expenses</span>
+                            <span class="stat-change negative">+5.2%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon savings">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">₹18,000</span>
+                            <span class="stat-label">Monthly Savings</span>
+                            <span class="stat-change positive">+8.3%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon investment">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">₹10,35,000</span>
+                            <span class="stat-label">Investments</span>
+                            <span class="stat-change positive">+15.7%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cash Flow and Accounts -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Monthly Cash Flow</h3>
+                        </div>
+                        <div class="card__body">
+                            <canvas id="cashFlowChart" height="200"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Account Balances</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="account-list">
+                                <div class="account-item">
+                                    <div class="account-info">
+                                        <span class="account-bank">HDFC Bank</span>
+                                        <span class="account-type">Savings ****6789</span>
+                                    </div>
+                                    <span class="account-balance">₹1,45,000</span>
+                                </div>
+                                <div class="account-item">
+                                    <div class="account-info">
+                                        <span class="account-bank">SBI</span>
+                                        <span class="account-type">Fixed Deposit</span>
+                                    </div>
+                                    <span class="account-balance">₹5,00,000</span>
+                                </div>
+                                <div class="account-item">
+                                    <div class="account-info">
+                                        <span class="account-bank">PPF Account</span>
+                                        <span class="account-type">Long-term Savings</span>
+                                    </div>
+                                    <span class="account-balance">₹1,80,000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions and Goals -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Recent Transactions</h3>
+                            <a href="#" class="view-all">View All</a>
+                        </div>
+                        <div class="card__body">
+                            <div class="transaction-list">
+                                <div class="transaction-item">
+                                    <div class="transaction-icon income">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                    <div class="transaction-info">
+                                        <span class="transaction-desc">Salary Credit</span>
+                                        <span class="transaction-date">June 14, 2025</span>
+                                    </div>
+                                    <span class="transaction-amount positive">+₹75,000</span>
+                                </div>
+                                <div class="transaction-item">
+                                    <div class="transaction-icon expense">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </div>
+                                    <div class="transaction-info">
+                                        <span class="transaction-desc">BigBasket Grocery</span>
+                                        <span class="transaction-date">June 13, 2025</span>
+                                    </div>
+                                    <span class="transaction-amount negative">-₹2,800</span>
+                                </div>
+                                <div class="transaction-item">
+                                    <div class="transaction-icon investment">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="transaction-info">
+                                        <span class="transaction-desc">SIP - HDFC Equity</span>
+                                        <span class="transaction-date">June 12, 2025</span>
+                                    </div>
+                                    <span class="transaction-amount investment">-₹10,000</span>
+                                </div>
+                                <div class="transaction-item">
+                                    <div class="transaction-icon expense">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <div class="transaction-info">
+                                        <span class="transaction-desc">Electricity Bill</span>
+                                        <span class="transaction-date">June 11, 2025</span>
+                                    </div>
+                                    <span class="transaction-amount negative">-₹1,850</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Goal Progress</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="goal-list">
+                                <div class="goal-item">
+                                    <div class="goal-info">
+                                        <span class="goal-name">Emergency Fund</span>
+                                        <span class="goal-progress">₹1,50,000 / ₹2,55,000</span>
+                                    </div>
+                                    <div class="goal-bar">
+                                        <div class="goal-fill" style="width: 59%"></div>
+                                    </div>
+                                    <span class="goal-percent">59%</span>
+                                </div>
+                                <div class="goal-item">
+                                    <div class="goal-info">
+                                        <span class="goal-name">House Down Payment</span>
+                                        <span class="goal-progress">₹8,50,000 / ₹20,00,000</span>
+                                    </div>
+                                    <div class="goal-bar">
+                                        <div class="goal-fill" style="width: 43%"></div>
+                                    </div>
+                                    <span class="goal-percent">43%</span>
+                                </div>
+                                <div class="goal-item">
+                                    <div class="goal-info">
+                                        <span class="goal-name">Child Education</span>
+                                        <span class="goal-progress">₹3,20,000 / ₹15,00,000</span>
+                                    </div>
+                                    <div class="goal-bar">
+                                        <div class="goal-fill" style="width: 21%"></div>
+                                    </div>
+                                    <span class="goal-percent">21%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Budget Tracker Section -->
+            <section id="budget" class="content-section">
+                <div class="section-header">
+                    <h2>Budget Tracker</h2>
+                    <button class="btn btn--primary">Add Budget Category</button>
+                </div>
+
+                <div class="budget-overview">
+                    <div class="budget-summary">
+                        <div class="budget-stat">
+                            <span class="budget-amount">₹85,000</span>
+                            <span class="budget-label">Monthly Budget</span>
+                        </div>
+                        <div class="budget-stat">
+                            <span class="budget-amount expense">₹65,000</span>
+                            <span class="budget-label">Total Spent</span>
+                        </div>
+                        <div class="budget-stat">
+                            <span class="budget-amount savings">₹20,000</span>
+                            <span class="budget-label">Remaining</span>
+                        </div>
+                    </div>
+                    <div class="budget-chart-container">
+                        <canvas id="budgetChart" height="300"></canvas>
+                    </div>
+                </div>
+
+                <div class="budget-categories">
+                    <h3>Category Breakdown</h3>
+                    <div class="category-list">
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-shopping-basket category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Groceries & Food</span>
+                                        <span class="category-spent">₹16,500 of ₹18,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage">92%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill good" style="width: 92%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-car category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Transportation</span>
+                                        <span class="category-spent">₹7,200 of ₹8,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage">90%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill good" style="width: 90%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-bolt category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Utilities & Bills</span>
+                                        <span class="category-spent">₹11,800 of ₹12,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage">98%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill warning" style="width: 98%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-film category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Entertainment</span>
+                                        <span class="category-spent">₹6,200 of ₹5,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage over">124%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill danger" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-heart category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Healthcare</span>
+                                        <span class="category-spent">₹2,800 of ₹4,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage">70%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill good" style="width: 70%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="category-item">
+                            <div class="category-header">
+                                <div class="category-info">
+                                    <i class="fas fa-shopping-bag category-icon"></i>
+                                    <div>
+                                        <span class="category-name">Shopping</span>
+                                        <span class="category-spent">₹12,500 of ₹10,000</span>
+                                    </div>
+                                </div>
+                                <span class="category-percentage over">125%</span>
+                            </div>
+                            <div class="category-progress">
+                                <div class="category-bar">
+                                    <div class="category-fill danger" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Goals & Assets Section -->
+            <section id="goals" class="content-section">
+                <div class="section-header">
+                    <h2>Goals & Assets Management</h2>
+                    <button class="btn btn--primary">Add New Goal</button>
+                </div>
+
+                <div class="goals-assets-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Financial Goals</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="goals-detailed">
+                                <div class="goal-card high-priority">
+                                    <div class="goal-header">
+                                        <div class="goal-title">
+                                            <i class="fas fa-shield-alt"></i>
+                                            <span>Emergency Fund</span>
+                                            <span class="priority-badge high">High Priority</span>
+                                        </div>
+                                        <span class="goal-deadline">Dec 2025</span>
+                                    </div>
+                                    <div class="goal-progress-detail">
+                                        <div class="progress-stats">
+                                            <span class="current-amount">₹1,50,000</span>
+                                            <span class="target-amount">₹2,55,000</span>
+                                        </div>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 59%"></div>
+                                            </div>
+                                            <span class="progress-percent">59%</span>
+                                        </div>
+                                        <p class="goal-suggestion">Increase monthly contribution by ₹8,000 to reach goal on time</p>
+                                    </div>
+                                </div>
+
+                                <div class="goal-card high-priority">
+                                    <div class="goal-header">
+                                        <div class="goal-title">
+                                            <i class="fas fa-home"></i>
+                                            <span>House Down Payment</span>
+                                            <span class="priority-badge high">High Priority</span>
+                                        </div>
+                                        <span class="goal-deadline">Jun 2027</span>
+                                    </div>
+                                    <div class="goal-progress-detail">
+                                        <div class="progress-stats">
+                                            <span class="current-amount">₹8,50,000</span>
+                                            <span class="target-amount">₹20,00,000</span>
+                                        </div>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 43%"></div>
+                                            </div>
+                                            <span class="progress-percent">43%</span>
+                                        </div>
+                                        <p class="goal-suggestion">On track! Continue current SIP of ₹15,000/month</p>
+                                    </div>
+                                </div>
+
+                                <div class="goal-card medium-priority">
+                                    <div class="goal-header">
+                                        <div class="goal-title">
+                                            <i class="fas fa-graduation-cap"></i>
+                                            <span>Child Education</span>
+                                            <span class="priority-badge medium">Medium Priority</span>
+                                        </div>
+                                        <span class="goal-deadline">Apr 2030</span>
+                                    </div>
+                                    <div class="goal-progress-detail">
+                                        <div class="progress-stats">
+                                            <span class="current-amount">₹3,20,000</span>
+                                            <span class="target-amount">₹15,00,000</span>
+                                        </div>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 21%"></div>
+                                            </div>
+                                            <span class="progress-percent">21%</span>
+                                        </div>
+                                        <p class="goal-suggestion">Start SIP of ₹12,000/month to meet this goal</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Investment Portfolio</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="portfolio-chart">
+                                <canvas id="portfolioChart" width="300" height="300"></canvas>
+                            </div>
+                            <div class="portfolio-breakdown">
+                                <div class="investment-item">
+                                    <div class="investment-color mutual-funds"></div>
+                                    <div class="investment-details">
+                                        <span class="investment-name">Mutual Funds</span>
+                                        <span class="investment-amount">₹4,50,000 (18%)</span>
+                                    </div>
+                                    <span class="investment-change positive">+12.5%</span>
+                                </div>
+                                <div class="investment-item">
+                                    <div class="investment-color stocks"></div>
+                                    <div class="investment-details">
+                                        <span class="investment-name">Stocks</span>
+                                        <span class="investment-amount">₹3,20,000 (13%)</span>
+                                    </div>
+                                    <span class="investment-change positive">+8.7%</span>
+                                </div>
+                                <div class="investment-item">
+                                    <div class="investment-color elss"></div>
+                                    <div class="investment-details">
+                                        <span class="investment-name">ELSS</span>
+                                        <span class="investment-amount">₹1,80,000 (7%)</span>
+                                    </div>
+                                    <span class="investment-change positive">+15.2%</span>
+                                </div>
+                                <div class="investment-item">
+                                    <div class="investment-color gold"></div>
+                                    <div class="investment-details">
+                                        <span class="investment-name">Digital Gold</span>
+                                        <span class="investment-amount">₹85,000 (3%)</span>
+                                    </div>
+                                    <span class="investment-change positive">+6.3%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Income & Expenses Section -->
+            <section id="income-expenses" class="content-section">
+                <div class="section-header">
+                    <h2>Income & Expenses Tracking</h2>
+                    <div class="header-actions">
+                        <button class="btn btn--outline">Add Income</button>
+                        <button class="btn btn--primary">Add Expense</button>
+                    </div>
+                </div>
+
+                <div class="income-expenses-overview">
+                    <div class="overview-stats">
+                        <div class="stat-card large">
+                            <div class="stat-icon income">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-amount">₹75,000</span>
+                                <span class="stat-label">Monthly Income</span>
+                                <span class="stat-detail">Salary + Other Income</span>
+                            </div>
+                        </div>
+                        <div class="stat-card large">
+                            <div class="stat-icon expense">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-amount">₹65,000</span>
+                                <span class="stat-label">Monthly Expenses</span>
+                                <span class="stat-detail">All Categories</span>
+                            </div>
+                        </div>
+                        <div class="stat-card large">
+                            <div class="stat-icon savings">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-amount">₹10,000</span>
+                                <span class="stat-label">Net Cash Flow</span>
+                                <span class="stat-detail">Income - Expenses</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="income-expenses-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Income Sources</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="income-list">
+                                <div class="income-item">
+                                    <div class="income-info">
+                                        <i class="fas fa-briefcase"></i>
+                                        <div>
+                                            <span class="income-source">Primary Salary</span>
+                                            <span class="income-frequency">Monthly</span>
+                                        </div>
+                                    </div>
+                                    <span class="income-amount">₹75,000</span>
+                                </div>
+                                <div class="income-item">
+                                    <div class="income-info">
+                                        <i class="fas fa-chart-line"></i>
+                                        <div>
+                                            <span class="income-source">Investment Returns</span>
+                                            <span class="income-frequency">Quarterly</span>
+                                        </div>
+                                    </div>
+                                    <span class="income-amount">₹8,500</span>
+                                </div>
+                                <div class="income-item">
+                                    <div class="income-info">
+                                        <i class="fas fa-laptop-code"></i>
+                                        <div>
+                                            <span class="income-source">Freelance Work</span>
+                                            <span class="income-frequency">Occasional</span>
+                                        </div>
+                                    </div>
+                                    <span class="income-amount">₹12,000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Expense Trends</h3>
+                        </div>
+                        <div class="card__body">
+                            <canvas id="expenseTrendChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card__header">
+                        <h3>Detailed Transaction History</h3>
+                        <div class="filter-controls">
+                            <select class="form-control" id="categoryFilter">
+                                <option value="">All Categories</option>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Entertainment">Entertainment</option>
+                            </select>
+                            <select class="form-control" id="monthFilter">
+                                <option value="">All Months</option>
+                                <option value="2025-06">June 2025</option>
+                                <option value="2025-05">May 2025</option>
+                                <option value="2025-04">April 2025</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card__body">
+                        <div class="transaction-table">
+                            <div class="transaction-header">
+                                <span>Date</span>
+                                <span>Description</span>
+                                <span>Category</span>
+                                <span>Amount</span>
+                            </div>
+                            <div class="transaction-row">
+                                <span>Jun 15, 2025</span>
+                                <span>Metro Card Recharge</span>
+                                <span>Transportation</span>
+                                <span class="negative">-₹500</span>
+                            </div>
+                            <div class="transaction-row">
+                                <span>Jun 14, 2025</span>
+                                <span>Salary Credit</span>
+                                <span>Income</span>
+                                <span class="positive">+₹75,000</span>
+                            </div>
+                            <div class="transaction-row">
+                                <span>Jun 13, 2025</span>
+                                <span>BigBasket Grocery</span>
+                                <span>Groceries</span>
+                                <span class="negative">-₹2,800</span>
+                            </div>
+                            <div class="transaction-row">
+                                <span>Jun 12, 2025</span>
+                                <span>SIP - HDFC Equity Fund</span>
+                                <span>Investment</span>
+                                <span class="investment">-₹10,000</span>
+                            </div>
+                            <div class="transaction-row">
+                                <span>Jun 11, 2025</span>
+                                <span>Electricity Bill</span>
+                                <span>Utilities</span>
+                                <span class="negative">-₹1,850</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Spending Analysis Section -->
+            <section id="analysis" class="content-section">
+                <div class="section-header">
+                    <h2>Spending Analysis</h2>
+                    <div class="analysis-controls">
+                        <select class="form-control" id="analysisTimeframe">
+                            <option value="monthly">Monthly View</option>
+                            <option value="quarterly">Quarterly View</option>
+                            <option value="yearly">Yearly View</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="analysis-grid">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Spending Pattern Analysis</h3>
+                        </div>
+                        <div class="card__body">
+                            <canvas id="spendingPatternChart" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Category Comparison</h3>
+                        </div>
+                        <div class="card__body">
+                            <canvas id="categoryComparisonChart" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis-insights">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>AI-Powered Insights</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="insights-list">
+                                <div class="insight-item warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div class="insight-content">
+                                        <h4>Entertainment Overspend Alert</h4>
+                                        <p>You've exceeded your entertainment budget by 24% this month. Consider reducing dining out frequency.</p>
+                                        <div class="insight-action">
+                                            <button class="btn btn--sm btn--outline">Set Alert</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="insight-item success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div class="insight-content">
+                                        <h4>Great Healthcare Savings</h4>
+                                        <p>You're 30% under budget for healthcare this month. Consider investing the surplus.</p>
+                                        <div class="insight-action">
+                                            <button class="btn btn--sm btn--primary">Invest Surplus</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="insight-item info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div class="insight-content">
+                                        <h4>Seasonal Spending Pattern</h4>
+                                        <p>Your utilities spending typically increases by 15% during summer months. Plan accordingly.</p>
+                                        <div class="insight-action">
+                                            <button class="btn btn--sm btn--outline">Adjust Budget</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Optimization Recommendations</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="recommendations-list">
+                                <div class="recommendation-item">
+                                    <div class="recommendation-impact high">
+                                        <span class="impact-label">High Impact</span>
+                                        <span class="savings-amount">Save ₹3,500/month</span>
+                                    </div>
+                                    <div class="recommendation-content">
+                                        <h4>Switch to Annual Subscriptions</h4>
+                                        <p>Move your streaming services and software subscriptions to annual plans for better rates.</p>
+                                        <ul>
+                                            <li>Netflix: Save ₹1,200/year</li>
+                                            <li>Spotify: Save ₹600/year</li>
+                                            <li>Adobe Creative: Save ₹2,400/year</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <div class="recommendation-impact medium">
+                                        <span class="impact-label">Medium Impact</span>
+                                        <span class="savings-amount">Save ₹2,000/month</span>
+                                    </div>
+                                    <div class="recommendation-content">
+                                        <h4>Optimize Transportation Costs</h4>
+                                        <p>Consider carpooling or public transport for 2-3 days per week.</p>
+                                        <ul>
+                                            <li>Fuel savings: ₹1,500/month</li>
+                                            <li>Reduced wear & tear: ₹500/month</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Services Section -->
+            <section id="services" class="content-section">
+                <div class="section-header">
+                    <h2>Financial Services</h2>
+                    <div class="upi-info">
+                        <span>UPI ID: rajesh@paytm</span>
+                        <button class="btn btn--sm btn--outline">Change UPI</button>
+                    </div>
+                </div>
+
+                <div class="services-grid">
+                    <div class="service-category">
+                        <h3>Payment Services</h3>
+                        <div class="service-items">
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Mobile Recharge</h4>
+                                    <p>Recharge your mobile with instant cashback</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Recharge</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-bolt"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Electricity Bill</h4>
+                                    <p>Pay your electricity bills with zero fees</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Pay Bill</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-tint"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Water Bill</h4>
+                                    <p>Quick water bill payments</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Pay Bill</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-fire"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Gas Bill</h4>
+                                    <p>LPG and PNG bill payments</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Pay Bill</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="service-category">
+                        <h3>Investment Services</h3>
+                        <div class="service-items">
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Mutual Funds</h4>
+                                    <p>Start SIP with as low as ₹500</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Invest</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-coins"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Digital Gold</h4>
+                                    <p>Buy gold starting from ₹1</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Buy Gold</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-piggy-bank"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>PPF Account</h4>
+                                    <p>Open PPF account for tax savings</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Open PPF</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Fixed Deposits</h4>
+                                    <p>High-interest FDs from top banks</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Invest</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="service-category">
+                        <h3>Insurance Services</h3>
+                        <div class="service-items">
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-user-shield"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Life Insurance</h4>
+                                    <p>Comprehensive life coverage plans</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Get Quote</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-heartbeat"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Health Insurance</h4>
+                                    <p>Family health insurance plans</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Get Quote</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-car"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Vehicle Insurance</h4>
+                                    <p>Car and bike insurance renewal</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Renew</button>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-icon">
+                                    <i class="fas fa-home"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h4>Home Insurance</h4>
+                                    <p>Protect your home and belongings</p>
+                                </div>
+                                <button class="btn btn--primary btn--sm">Get Quote</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tax-services">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Tax Optimization Services</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="tax-summary">
+                                <div class="tax-stat">
+                                    <span class="tax-amount">₹1,25,000</span>
+                                    <span class="tax-label">Invested in 80C</span>
+                                </div>
+                                <div class="tax-stat">
+                                    <span class="tax-amount">₹25,000</span>
+                                    <span class="tax-label">Remaining Limit</span>
+                                </div>
+                                <div class="tax-stat">
+                                    <span class="tax-amount">₹8,500</span>
+                                    <span class="tax-label">GST Savings</span>
+                                </div>
+                            </div>
+                            <div class="tax-recommendations">
+                                <h4>Tax Saving Recommendations</h4>
+                                <ul>
+                                    <li>Invest remaining ₹25,000 in ELSS for additional tax savings</li>
+                                    <li>Consider NPS for extra ₹50,000 deduction under 80CCD(1B)</li>
+                                    <li>Pay health insurance premium for 80D benefits</li>
+                                    <li>Maintain HRA receipts for additional deductions</li>
+                                </ul>
+                                <button class="btn btn--primary">Optimize Tax Savings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- AI Assistant - FinGuru -->
+        <div class="ai-assistant" id="aiAssistant">
+            <div class="assistant-toggle" id="assistantToggle">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="assistant-window" id="assistantWindow">
+                <div class="assistant-header">
+                    <div class="assistant-info">
+                        <i class="fas fa-robot"></i>
+                        <span>FinGuru - AI Assistant</span>
+                    </div>
+                    <button class="assistant-close" id="assistantClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="assistant-chat" id="assistantChat">
+                    <div class="chat-message assistant">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Hello Rajesh! I'm FinGuru, your AI financial assistant. I can help you with:</p>
+                            <ul>
+                                <li>Budget optimization suggestions</li>
+                                <li>Investment recommendations</li>
+                                <li>Goal planning strategies</li>
+                                <li>Tax saving opportunities</li>
+                            </ul>
+                            <p>What would you like to know about your finances today?</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="assistant-input">
+                    <input type="text" id="assistantInput" placeholder="Ask FinGuru anything about your finances..." class="form-control">
+                    <button id="assistantSend" class="btn btn--primary">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="assistant-suggestions">
+                    <button class="suggestion-btn" data-suggestion="How can I improve my FinScore?">Improve FinScore</button>
+                    <button class="suggestion-btn" data-suggestion="What should I do with my surplus money?">Invest Surplus</button>
+                    <button class="suggestion-btn" data-suggestion="How to reduce my entertainment expenses?">Reduce Expenses</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
