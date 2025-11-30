@@ -1,0 +1,106 @@
+type User {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String!
+  phone: String
+  kycVerified: Boolean!
+  accounts: [Account!]!
+  transactions: [Transaction!]!
+  budgets: [Budget!]!
+  goals: [Goal!]!
+  nudges: [Nudge!]!
+}
+
+type Account {
+  id: ID!
+  institutionName: String!
+  accountType: String!
+  accountNumberMasked: String
+  balance: Float!
+  currency: String!
+  transactions: [Transaction!]!
+}
+
+type Transaction {
+  id: ID!
+  amount: Float!
+  merchantName: String
+  category: String
+  transactionDate: String!
+  description: String
+  pending: Boolean!
+}
+
+type Budget {
+  id: ID!
+  category: String!
+  monthlyLimit: Float!
+  currentSpend: Float!
+  month: String!
+}
+
+type Goal {
+  id: ID!
+  goalName: String!
+  targetAmount: Float!
+  currentAmount: Float!
+  deadline: String
+  completed: Boolean!
+}
+
+type Nudge {
+  id: ID!
+  title: String!
+  message: String!
+  nudgeType: String!
+  priority: String!
+  read: Boolean!
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  user: User!
+}
+
+type AIResponse {
+  answer: String!
+  confidence: Float
+  sources: [String]
+}
+
+type LinkToken {
+  linkToken: String!
+}
+
+type SyncResult {
+  success: Boolean!
+  transactionsSynced: Int!
+}
+
+type Query {
+  health: String!
+  me: User!
+  accounts: [Account!]!
+  transactions(limit: Int, offset: Int): [Transaction!]!
+  budgets: [Budget!]!
+  goals: [Goal!]!
+  nudges(unreadOnly: Boolean): [Nudge!]!
+}
+
+type Mutation {
+  register(email: String!, password: String!, firstName: String!, lastName: String!): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  
+  createLinkToken: LinkToken!
+  exchangePublicToken(publicToken: String!): SyncResult!
+  syncTransactions: SyncResult!
+  
+  createBudget(category: String!, monthlyLimit: Float!): Budget!
+  createGoal(goalName: String!, targetAmount: Float!, deadline: String): Goal!
+  
+  askAI(message: String!): AIResponse!
+  markNudgeRead(nudgeId: ID!): Nudge!
+}

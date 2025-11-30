@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: finguru-postgres
+    environment:
+      POSTGRES_DB: finguru
+      POSTGRES_USER: finguru_user
+      POSTGRES_PASSWORD: finguru_secure_pass
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - finguru-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finguru_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: finguru-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: finguru
+      RABBITMQ_DEFAULT_PASS: finguru123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - finguru-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Weaviate Vector Database
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    container_name: finguru-weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      CLUSTER_HOSTNAME: 'node1'
+    ports:
+      - "8081:8080"
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    networks:
+      - finguru-net
+
+  # Ollama LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: finguru-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - finguru-net
+
+  # Backend GraphQL API
+  backend-api:
+    build: ./backend-api
+    container_name: finguru-backend
+    environment:
+      DATABASE_URL: postgresql://finguru_user:finguru_secure_pass@postgres:5432/finguru
+      JWT_SECRET: your_super_secret_jwt_key_minimum_32_characters_long
+      JWT_EXPIRY: 15m
+      RABBITMQ_URL: amqp://finguru:finguru123@rabbitmq:5672
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID:-}
+      PLAID_SECRET: ${PLAID_SECRET:-}
+      PLAID_ENV: sandbox
+      NODE_ENV: development
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - finguru-net
+    restart: unless-stopped
+    volumes:
+      - ./backend-api/src:/app/src
+
+  # AI Engine
+  ai-engine:
+    build: ./ai-engine
+    container_name: finguru-ai
+    environment:
+      DATABASE_URL: postgresql://finguru_user:finguru_secure_pass@postgres:5432/finguru
+      WEAVIATE_URL: http://weaviate:8080
+      OLLAMA_URL: http://ollama:11434
+      LLM_MODEL: llama3.1:8b
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      weaviate:
+        condition: service_started
+      ollama:
+        condition: service_started
+    networks:
+      - finguru-net
+    restart: unless-stopped
+
+  # Transaction Processor Worker
+  transaction-processor:
+    build: ./transaction-processor
+    container_name: finguru-processor
+    environment:
+      DATABASE_URL: postgresql://finguru_user:finguru_secure_pass@postgres:5432/finguru
+      RABBITMQ_URL: amqp://finguru:finguru123@rabbitmq:5672
+      WEAVIATE_URL: http://weaviate:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - finguru-net
+    restart: unless-stopped
+
+  # Web Client
+  web-client:
+    build: ./web-client
+    container_name: finguru-web
+    environment:
+      REACT_APP_GRAPHQL_URL: http://localhost:4000/graphql
+      REACT_APP_WS_URL: ws://localhost:4000/graphql
+    ports:
+      - "3000:3000"
+    networks:
+      - finguru-net
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  finguru-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  weaviate-data:
+  ollama-data:

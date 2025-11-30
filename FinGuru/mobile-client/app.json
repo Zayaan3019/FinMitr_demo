@@ -1,0 +1,46 @@
+import React from 'react';
+import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, gql } from '@apollo/client';
+import { SafeAreaView, Text, View, ActivityIndicator } from 'react-native';
+
+// Initialize Apollo Client
+// Note: For Android Emulator use '10.0.2.2', for iOS use 'localhost'
+const client = new ApolloClient({
+  uri: 'http://localhost:4000/', 
+  cache: new InMemoryCache(),
+});
+
+// GraphQL Query
+const ASK_GURU = gql`
+  query AskGuru($query: String!, $userId: String!) {
+    askGuru(query: $query, userId: $userId) {
+      answer
+    }
+  }
+`;
+
+const ChatScreen = () => {
+  // Hardcoded query for demo purposes
+  const { loading, error, data } = useQuery(ASK_GURU, {
+    variables: { query: "How much did I spend on Sushi?", userId: "user_123" },
+  });
+
+  if (loading) return <ActivityIndicator />;
+  if (error) return <Text>Error: {error.message}</Text>;
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold' }}>FinGuru Says:</Text>
+      <Text style={{ marginTop: 10, fontSize: 16 }}>{data.askGuru.answer}</Text>
+    </View>
+  );
+};
+
+export default function App() {
+  return (
+    <ApolloProvider client={client}>
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center' }}>
+        <ChatScreen />
+      </SafeAreaView>
+    </ApolloProvider>
+  );
+}
