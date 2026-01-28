@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  finguru:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finguru_api
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - APP_NAME=FinGuru
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - CHROMA_PERSIST_DIR=/app/data/chromadb
+    volumes:
+      # Persist ChromaDB data
+      - ./data:/app/data
+      # Persist logs
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - finguru_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  finguru_network:
+    driver: bridge
+
+volumes:
+  finguru_data:
+    driver: local
+  finguru_logs:
+    driver: local
