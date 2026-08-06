@@ -1,48 +1,80 @@
-# Core Framework
+# ---------------------------------------------------------------------------
+# Core framework
+# ---------------------------------------------------------------------------
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
-python-multipart>=0.0.6
+email-validator>=2.1.0          # EmailStr validation on registration/login
+python-multipart>=0.0.6         # multipart/form-data for CSV upload
 
-# AI & LLM
-langchain>=0.1.6
-langchain-community>=0.0.18
-langchain-groq>=0.0.1
-langgraph>=0.0.20
-groq>=0.4.2
+# ---------------------------------------------------------------------------
+# Persistence (PHASE 2)
+# ---------------------------------------------------------------------------
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0                 # async driver, used at runtime
+psycopg[binary]>=3.1.17         # sync driver, used by Alembic
+alembic>=1.13.1
+redis>=5.0.1                    # jti denylist, auth rate limits, token budgets
 
-# Vector Database
-chromadb>=0.4.22
-sentence-transformers>=2.3.1
+# ---------------------------------------------------------------------------
+# Identity (PHASE 1)
+# ---------------------------------------------------------------------------
+# Argon2id, not bcrypt: memory-hardness is what bounds GPU parallelism.
+argon2-cffi>=23.1.0
+pyjwt>=2.8.0
+pyotp>=2.9.0                    # TOTP second factor
+# X25519 / HKDF / AES-256-GCM for the AA payload path, and AES-GCM field
+# encryption for stored MFA secrets.
+cryptography>=42.0.0
 
-# Data Processing & ML
+# ---------------------------------------------------------------------------
+# ML (PHASE 4)
+# ---------------------------------------------------------------------------
+torch>=2.0.0
+transformers>=4.38.0            # the fine-tuned narration categoriser
 pandas>=2.1.4
 numpy>=1.26.3
 scikit-learn>=1.4.0
+pyod>=1.1.2                     # Isolation Forest anomaly detection
 
-# Time-Series & Deep Learning
-statsmodels>=0.14.0
-arch>=6.3.0
-prophet>=1.1.5
-pyod>=1.1.2
-torch>=2.0.0
-matplotlib>=3.8.0
-plotly>=5.18.0
-fastapi[testclient]>=0.109.0
+# ---------------------------------------------------------------------------
+# LLM (PHASE 5)
+# ---------------------------------------------------------------------------
+langchain-core>=0.1.23
+langchain-groq>=0.0.1
+groq>=0.4.2
 
-# Utilities
-python-dotenv>=1.0.0
-httpx>=0.26.0
-tenacity>=8.2.3
+# ---------------------------------------------------------------------------
+# Operations
+# ---------------------------------------------------------------------------
+psutil>=5.9.0
 loguru>=0.7.2
+python-dotenv>=1.0.0
+httpx>=0.26.0                   # AA transport, and the ASGI test client
+tenacity>=8.2.3
 
-# Development & Testing
+# ---------------------------------------------------------------------------
+# Development and testing
+# ---------------------------------------------------------------------------
 pytest>=7.4.4
 pytest-asyncio>=0.23.3
 pytest-cov>=4.1.0
 black>=24.1.1
 ruff>=0.1.14
-
-# Security
 bandit>=1.7.5
+
+# ---------------------------------------------------------------------------
+# Deliberately removed
+# ---------------------------------------------------------------------------
+# chromadb / sentence-transformers -- the demo stored transactions as embeddings
+#   in ChromaDB and enforced tenancy with a metadata filter. A metadata filter
+#   is an application-level convention, not an access control: forget it in one
+#   query and you return everyone's data. Replaced by PostgreSQL with Row-Level
+#   Security, where isolation survives a forgotten WHERE clause.
+# langchain / langchain-community / langgraph -- the demo agent workflow. The
+#   pipeline is explicit now; only `langchain-core` remains, for the Groq
+#   message types.
+# prophet / statsmodels / arch / matplotlib / plotly -- required only by the
+#   unmounted `app/timeseries` package. Reinstall them if that module is ever
+#   wired up (see the README, "What is deliberately not here").

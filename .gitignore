@@ -40,6 +40,9 @@ pip-wheel-metadata/
 .env
 *.env
 .env.*
+# ...but the template must be committed: it is the only documentation of which
+# variables exist, and the last rule listed wins in gitignore.
+!.env.example
 
 # Docker
 docker-compose.override.yml

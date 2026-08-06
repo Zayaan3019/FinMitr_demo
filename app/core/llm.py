@@ -43,9 +43,7 @@ class LLMManager:
             logger.error(f"Failed to initialize LLM: {e}")
             raise
 
-    @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def invoke(self, messages: list[BaseMessage]) -> str:
         """
         Invoke the LLM with retry logic.

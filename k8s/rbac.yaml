@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: finguru
+  namespace: finguru
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: finguru
+  namespace: finguru
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: finguru
+  namespace: finguru
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: finguru
+subjects:
+  - kind: ServiceAccount
+    name: finguru
+    namespace: finguru

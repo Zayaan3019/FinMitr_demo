@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+
 class LSTMModel(nn.Module):
     def __init__(self, input_size=1, hidden_size=50, num_layers=1, output_size=1):
         super(LSTMModel, self).__init__()
@@ -19,13 +20,14 @@ class LSTMModel(nn.Module):
         out = self.fc(out[:, -1, :])
         return out
 
+
 # Example: Fit LSTM to univariate series
 def fit_lstm(data: pd.Series, epochs=10, batch_size=16, hidden_size=50):
     # Prepare data
     X, y = [], []
-    for i in range(len(data)-1):
+    for i in range(len(data) - 1):
         X.append([data.values[i]])
-        y.append(data.values[i+1])
+        y.append(data.values[i + 1])
     X = torch.tensor(X, dtype=torch.float32).unsqueeze(1)
     y = torch.tensor(y, dtype=torch.float32)
     dataset = TensorDataset(X, y)

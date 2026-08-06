@@ -1,0 +1,186 @@
+# Prometheus Alerting Rules for FinGuru
+# These rules trigger alerts based on metrics thresholds
+
+groups:
+  - name: finguru_health
+    interval: 30s
+    rules:
+      # Alert when service is down
+      - alert: FinGuruDown
+        expr: up{job="finguru"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "FinGuru API is down"
+          description: "FinGuru API has been down for more than 1 minute."
+
+      # Alert when health check fails
+      - alert: FinGuruUnhealthy
+        expr: health_status{status="unhealthy"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "FinGuru health check failing"
+          description: "FinGuru health status is unhealthy for {{ $labels.instance }}."
+
+  - name: finguru_performance
+    interval: 30s
+    rules:
+      # Alert on high response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s (threshold: 5s)."
+
+      # Alert on high error rate
+      - alert: HighErrorRate
+        expr: rate(http_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)."
+
+      # Alert when cache hit rate is low
+      - alert: LowCacheHitRate
+        expr: (cache_hits / (cache_hits + cache_misses)) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache hit rate is low"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)."
+
+  - name: finguru_resources
+    interval: 30s
+    rules:
+      # Alert on high memory usage
+      - alert: HighMemoryUsage
+        expr: memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}."
+
+      # Alert on critical memory usage
+      - alert: CriticalMemoryUsage
+        expr: memory_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}. Immediate action required."
+
+      # Alert on high CPU usage
+      - alert: HighCPUUsage
+        expr: cpu_usage_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}."
+
+      # Alert on low disk space
+      - alert: LowDiskSpace
+        expr: disk_free_gb < 5
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value }}GB free disk space remaining on {{ $labels.instance }}."
+
+  - name: finguru_database
+    interval: 30s
+    rules:
+      # Alert on database connection issues
+      - alert: DatabaseConnectionFailed
+        expr: database_status{status="unhealthy"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection failed"
+          description: "ChromaDB connection is failing on {{ $labels.instance }}."
+
+      # Alert on large database size
+      - alert: LargeDatabaseSize
+        expr: database_total_documents > 1000000
+        for: 1h
+        labels:
+          severity: info
+          component: database
+        annotations:
+          summary: "Database size is large"
+          description: "Database has {{ $value }} documents. Consider archiving old data."
+
+  - name: finguru_llm
+    interval: 30s
+    rules:
+      # Alert on LLM service issues
+      - alert: LLMServiceDown
+        expr: llm_status{status="unhealthy"} == 1
+        for: 3m
+        labels:
+          severity: critical
+          component: llm
+        annotations:
+          summary: "LLM service unavailable"
+          description: "GROQ LLM service is unavailable on {{ $labels.instance }}."
+
+      # Alert on circuit breaker open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: resilience
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker for {{ $labels.service }} is open, indicating service failure."
+
+  - name: finguru_security
+    interval: 30s
+    rules:
+      # Alert on rate limit violations
+      - alert: RateLimitViolations
+        expr: rate(rate_limit_violations_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High rate limit violations"
+          description: "{{ $value }} rate limit violations per second detected."
+
+      # Alert on suspicious activity
+      - alert: SuspiciousActivity
+        expr: rate(suspicious_requests_blocked_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Suspicious activity detected"
+          description: "{{ $value }} suspicious requests blocked per second."

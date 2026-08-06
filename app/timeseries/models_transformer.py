@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
+
 class TimeSeriesTransformer(nn.Module):
     def __init__(self, input_size=1, d_model=64, nhead=4, num_layers=2, output_size=1):
         super(TimeSeriesTransformer, self).__init__()
@@ -20,6 +21,7 @@ class TimeSeriesTransformer(nn.Module):
         x = self.transformer(x)
         x = self.fc(x[-1])
         return x
+
 
 # Example: Fit Transformer to univariate series (stub)
 def fit_transformer(data: pd.Series, epochs=10, batch_size=16, d_model=64):
