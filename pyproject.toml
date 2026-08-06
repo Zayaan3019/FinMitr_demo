@@ -1,0 +1,18 @@
+# Formatter configuration.
+#
+# `line-length` must match `ruff.toml`. If the two disagree, black rewraps a
+# line to 88 and ruff then reports it, or vice versa -- and CI fails on every
+# commit no matter what the author does. Keep them in step.
+#
+# This file exists only for tool configuration. FinGuru is an application, not
+# a distributable package, so there is no [project] table and nothing to build.
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = '''
+/(
+    \.venv
+  | alembic/versions
+)/
+'''

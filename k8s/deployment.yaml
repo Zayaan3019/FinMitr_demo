@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finguru
+  namespace: finguru
+  labels:
+    app: finguru
+    version: v2.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: finguru
+  template:
+    metadata:
+      labels:
+        app: finguru
+        version: v2.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: default
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      containers:
+      - name: finguru
+        image: finguru:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        
+        # Config first, secrets second: on a key collision the later source
+        # wins, so a value accidentally left in the ConfigMap cannot shadow the
+        # real secret.
+        #
+        # Previously only GROQ_API_KEY was wired, which meant JWT_SECRET,
+        # FIELD_ENCRYPTION_KEY, AA_WEBHOOK_SECRET and both database URLs were
+        # simply absent. The pod would have fallen back to the development JWT
+        # placeholder -- a signing key that is public in this repository.
+        # `validate_production_settings()` refuses to start on exactly that, so
+        # it failed safe rather than serving forgeable tokens, but the
+        # deployment was incomplete.
+        envFrom:
+        - configMapRef:
+            name: finguru-config
+        - secretRef:
+            name: finguru-secrets
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            # Argon2id holds 64 MiB per concurrent hash on top of the loaded
+            # transformer. Ten simultaneous logins is ~640 MiB transient. That
+            # cost is the security property, not a leak -- but a limit sized
+            # without it will OOM-kill pods under a login burst, which is
+            # precisely when you least want to lose capacity.
+            memory: "2Gi"
+            cpu: "1000m"
+        
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 12
+        
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: finguru-data-pvc
+      - name: logs
+        persistentVolumeClaim:
+          claimName: finguru-logs-pvc
+      - name: tmp
+        emptyDir: {}
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - finguru
+              topologyKey: kubernetes.io/hostname

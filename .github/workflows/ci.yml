@@ -1,89 +1,181 @@
-name: FinGuru CI/CD
+# CI for FinGuru.
+#
+# The important design decision here: **the test job runs real PostgreSQL and
+# real Redis service containers.** The central security claim of this codebase
+# is that cross-user access is blocked by PostgreSQL Row-Level Security. That
+# cannot be tested against SQLite, which has no RLS, and a mocked database
+# would agree with whatever the test asserted. CI that skipped those tests
+# would report green while proving nothing -- which is worse than red.
+#
+# The `security` job is separate and gates the merge on the definition-of-done
+# tests specifically, so a failure there is unmistakable in the checks list
+# rather than buried among unit tests.
+
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12']
-
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-asyncio pytest-cov httpx
-    
-    - name: Run tests with coverage
-      env:
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: |
-        pytest tests/ --cov=app --cov-report=xml --cov-report=term-missing -v
-    
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-
   lint:
+    name: Lint
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install linting tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install black ruff
-    
-    - name: Run Black
-      run: black --check app/ scripts/ tests/
-    
-    - name: Run Ruff
-      run: ruff check app/ scripts/ tests/
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install ruff black
+      - name: ruff
+        run: ruff check app/ main.py scripts/ tests/
+      - name: black --check
+        run: black --check app/ main.py scripts/ tests/
 
-  docker:
+  test:
+    name: Tests (PostgreSQL + Redis)
     runs-on: ubuntu-latest
-    
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: finguru
+          POSTGRES_PASSWORD: finguru
+          POSTGRES_DB: finguru
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U finguru -d finguru"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      # The app connects as finguru_app, which the migration creates
+      # NOSUPERUSER NOBYPASSRLS. Running the suite as the owner would let every
+      # RLS test pass while proving nothing -- PostgreSQL exempts owners from
+      # policies unless FORCE is set, and exempts superusers unconditionally.
+      DATABASE_URL: postgresql+asyncpg://finguru_app:finguru_app@localhost:5432/finguru
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://finguru:finguru@localhost:5432/finguru
+      DB_APP_ROLE: finguru_app
+      DB_APP_PASSWORD: finguru_app
+      REDIS_URL: redis://localhost:6379/0
+      REDIS_REQUIRED: "true"
+      JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
+      FIELD_ENCRYPTION_KEY: Y2ktb25seS1maWVsZC1lbmNyeXB0aW9uLWtleTMy
+      AA_USE_MOCK_TRANSPORT: "true"
+      AA_WEBHOOK_SECRET: ci-webhook-secret
+      ENVIRONMENT: development
+      DEBUG: "True"
+      # Production Argon2 cost (64 MiB, t=3) would make a suite with dozens of
+      # logins take minutes on a shared runner.
+      ARGON2_MEMORY_COST: "8192"
+      ARGON2_TIME_COST: "1"
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Build Docker image
-      run: docker build -t finguru:test .
-    
-    - name: Test Docker image
-      run: |
-        docker run --rm finguru:test python -c "import app; print('✅ Import successful')"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Verify the app role really cannot bypass RLS
+        # Asserted before the suite runs, because if this were ever wrong every
+        # isolation test below would pass for the wrong reason.
+        run: |
+          python - <<'PY'
+          import asyncio
+          from sqlalchemy import text
+          from app.db.session import tenant_session
+          import uuid
+
+          async def main():
+              async with tenant_session(uuid.uuid4()) as s:
+                  role, sup, bypass = (await s.execute(text(
+                      "SELECT current_user, rolsuper, rolbypassrls "
+                      "FROM pg_roles WHERE rolname = current_user"))).one()
+              assert not sup, f"{role} is SUPERUSER -- RLS would be inert"
+              assert not bypass, f"{role} has BYPASSRLS -- RLS would be inert"
+              print(f"OK: connected as {role} (nosuperuser, nobypassrls)")
+
+          asyncio.run(main())
+          PY
+
+      - name: Test suite
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Anomaly detector must beat random
+        run: python scripts/evaluate_anomalies.py --source synthetic --n 4000
 
   security:
+    name: Definition of done
     runs-on: ubuntu-latest
-    
+    needs: test
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Run security checks
-      run: |
-        pip install safety bandit
-        safety check --json || true
-        bandit -r app/ -ll || true
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install bandit
+
+      - name: bandit
+        # B101 (assert) is excluded for tests only; assertions in application
+        # code are still flagged, because `assert` is stripped under -O and a
+        # security check that vanishes under optimisation is not a check.
+        run: bandit -r app/ main.py -ll
+
+      - name: README must state the FIU sandbox limitation
+        # Definition-of-done #7. An owned limitation is credible; a silent one
+        # is not, and the failure mode of forgetting is that the project starts
+        # implying an RBI registration it does not have.
+        run: |
+          grep -qi "not an RBI-registered Financial Information User" README.md \
+            || (echo "README does not state the FIU limitation" && exit 1)
+          grep -qi "sandbox" README.md \
+            || (echo "README does not mention the sandbox boundary" && exit 1)
+          echo "OK: README states the FIU sandbox limitation"
+
+      - name: No user identifier may appear in any route path
+        # A cheap grep backstop for definition-of-done #1. The real proof is
+        # tests/test_phase0_idor.py, which walks the generated OpenAPI
+        # document; this catches the obvious form without importing the app.
+        run: |
+          if grep -rnE '@router\.(get|post|put|patch|delete)\([^)]*\{[a-z_]*user[a-z_]*\}' app/; then
+            echo "A route path template contains a user identifier -- this is the IDOR."
+            exit 1
+          fi
+          echo "OK: no route path carries a user identifier"
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: finguru:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

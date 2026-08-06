@@ -1,40 +1,150 @@
-version: '3.8'
+# FinGuru local / CI stack.
+#
+# Host ports are deliberately non-default (55432, 56379) so this stack never
+# collides with a Postgres or Redis already running on the machine -- and so a
+# misconfigured client cannot silently reach the wrong database.
+#
+# The `finguru` role owns the schema and is used by Alembic only. The
+# application connects as `finguru_app`, which the migration creates NOBYPASSRLS
+# and NOSUPERUSER. That separation is load-bearing: PostgreSQL exempts both
+# superusers and table owners from Row-Level Security, so running the app as
+# `finguru` would silently disable every tenancy policy in the schema.
 
 services:
-  finguru:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finguru_postgres
+    environment:
+      POSTGRES_USER: finguru
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finguru}
+      POSTGRES_DB: finguru
+    ports:
+      - "55432:5432"
+    volumes:
+      - finguru_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finguru -d finguru"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [finguru_network]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: finguru_redis
+    # appendonly: the jti denylist is a security control. A revoked token
+    # coming back to life because Redis restarted is a real failure, not a
+    # cache miss.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "56379:6379"
+    volumes:
+      - finguru_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [finguru_network]
+    restart: unless-stopped
+
+  migrate:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: finguru_migrate
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://finguru:${POSTGRES_PASSWORD:-finguru}@postgres:5432/finguru
+      DATABASE_URL: postgresql+asyncpg://finguru_app:${DB_APP_PASSWORD:-finguru_app}@postgres:5432/finguru
+      DB_APP_ROLE: finguru_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-finguru_app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [finguru_network]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     container_name: finguru_api
+    image: finguru:latest
     ports:
       - "8000:8000"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - APP_NAME=FinGuru
-      - DEBUG=False
-      - LOG_LEVEL=INFO
-      - CHROMA_PERSIST_DIR=/app/data/chromadb
+      APP_NAME: FinGuru
+      APP_VERSION: "3.0.0"
+      DEBUG: "False"
+      LOG_LEVEL: INFO
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+
+      DATABASE_URL: postgresql+asyncpg://finguru_app:${DB_APP_PASSWORD:-finguru_app}@postgres:5432/finguru
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://finguru:${POSTGRES_PASSWORD:-finguru}@postgres:5432/finguru
+      DB_APP_ROLE: finguru_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-finguru_app}
+
+      REDIS_URL: redis://redis:6379/0
+      # Multi-worker: the in-process fallback would give each worker its own
+      # denylist, so a token revoked on worker 1 would still be accepted by
+      # worker 2. Fail rather than degrade.
+      REDIS_REQUIRED: "true"
+
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?FIELD_ENCRYPTION_KEY must be set}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+
+      AA_PROVIDER: ${AA_PROVIDER:-setu}
+      AA_USE_MOCK_TRANSPORT: ${AA_USE_MOCK_TRANSPORT:-true}
+      AA_WEBHOOK_SECRET: ${AA_WEBHOOK_SECRET:?AA_WEBHOOK_SECRET must be set}
+
+      MODEL_REGISTRY_DIR: /app/data/models
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+      WORKERS: 2
     volumes:
-      # Persist ChromaDB data
-      - ./data:/app/data
-      # Persist logs
-      - ./logs:/app/logs
-    restart: unless-stopped
-    networks:
-      - finguru_network
+      # Trained model artefacts only. No transaction data touches the
+      # container filesystem -- it lives in PostgreSQL.
+      - finguru_models:/app/data
+      - finguru_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/live', timeout=4).status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    restart: unless-stopped
+    networks: [finguru_network]
+    deploy:
+      resources:
+        limits: {cpus: '2.0', memory: 2G}
+        reservations: {cpus: '0.5', memory: 512M}
+    logging:
+      driver: "json-file"
+      options: {max-size: "10m", max-file: "3"}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.cache
 
 networks:
   finguru_network:
     driver: bridge
 
 volumes:
-  finguru_data:
-    driver: local
+  finguru_pgdata:
+  finguru_redisdata:
+  finguru_models:
   finguru_logs:
-    driver: local

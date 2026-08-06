@@ -1,233 +1,223 @@
-# FinGuru - Setup Guide
+# Setup
 
-## Prerequisites Checklist
+## Prerequisites
 
-Before starting, ensure you have:
+- Python 3.11+
+- Docker (for PostgreSQL and Redis)
+- A Groq API key, if you want the advisory chat. Everything else works without
+  one — the LLM path degrades to locally computed answers rather than failing.
 
-- [ ] Python 3.10 or higher installed
-- [ ] pip package manager
-- [ ] 2GB free disk space
-- [ ] Internet connection (for downloading dependencies)
-- [ ] GROQ API key (free from https://console.groq.com)
+## 1. Dependencies
 
-## Step-by-Step Setup
-
-### 1. Get GROQ API Key (Free)
-
-1. Visit https://console.groq.com
-2. Sign up for a free account
-3. Navigate to API Keys section
-4. Create a new API key
-5. Copy the key (you'll need it in step 4)
-
-**Note:** GROQ provides free, fast LLM inference - no credit card required!
-
-### 2. Install Python Dependencies
-
-**Windows:**
 ```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-venv\Scripts\activate
-
-# Install dependencies
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**Linux/Mac:**
-```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment
+## 2. Configuration
 
 ```bash
-# Copy example environment file
-# Windows:
-copy .env.example .env
-
-# Linux/Mac:
 cp .env.example .env
 ```
 
-Edit `.env` file and set your GROQ API key:
-```env
-GROQ_API_KEY=gsk_your_actual_api_key_here
-```
-
-### 4. Generate Sample Data
+Two values must be set before anything runs safely:
 
 ```bash
-python scripts/generate_data.py --users 2 --transactions 300 --output data/transactions.csv
+# 32+ characters. Startup refuses the development placeholder in production.
+JWT_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
+
+# 32 bytes, base64. Encrypts stored MFA secrets at rest.
+FIELD_ENCRYPTION_KEY=$(python -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())")
 ```
 
-This creates realistic transaction data for 2 users with 300 transactions each.
+Note the two database URLs, pointing at **different roles**:
 
-### 5. Start the API Server
+```
+DATABASE_URL=postgresql+asyncpg://finguru_app:...@localhost:55432/finguru
+DATABASE_MIGRATION_URL=postgresql+asyncpg://finguru:...@localhost:55432/finguru
+```
+
+This is not redundancy. `finguru` owns the schema and runs migrations;
+`finguru_app` is created `NOSUPERUSER NOBYPASSRLS` and is what the application
+connects as. PostgreSQL exempts superusers and table owners from Row-Level
+Security, so pointing `DATABASE_URL` at the owner would silently disable every
+tenancy policy in the schema while all the SQL still looked correct.
+
+## 3. Database and Redis
 
 ```bash
-python main.py
+docker compose up -d postgres redis
+alembic upgrade head
 ```
 
-The server will start at: `http://localhost:8000`
+The migration creates the schema, the partitions, the RLS policies and the
+`finguru_app` role. It is the only thing that runs DDL — there is no
+`create_all()` anywhere.
 
-### 6. Test the API
+## 4. Run
 
-Open your browser and visit:
-- **API Docs**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/api/v1/health
-
-Or use the example script:
 ```bash
-python scripts/example_usage.py
+uvicorn main:app --reload
 ```
 
-## Quick Start (Automated)
+Then http://localhost:8000/docs.
 
-### Windows
+Startup refuses to proceed if the database is unreachable. That is deliberate:
+without PostgreSQL there is no RLS, and serving requests without tenancy
+enforcement is worse than serving none.
+
+## 5. Train the categoriser (optional)
+
 ```bash
-# Run the automated setup script
-start.bat
+python scripts/train_categorizer.py --rows 14000 --epochs 5
 ```
 
-### Linux/Mac
-```bash
-# Make script executable
-chmod +x start.sh
-
-# Run the script
-./start.sh
-```
-
-## Troubleshooting
-
-### Issue: "GROQ_API_KEY must be set"
-**Solution:** Make sure you've added your GROQ API key to the `.env` file
-
-### Issue: "ModuleNotFoundError"
-**Solution:** Ensure virtual environment is activated and run `pip install -r requirements.txt`
-
-### Issue: "Port 8000 already in use"
-**Solution:** Change the port in `.env`:
-```env
-API_PORT=8001
-```
-
-### Issue: ChromaDB errors
-**Solution:** Delete the `data/chromadb` folder and restart:
-```bash
-# Windows
-rmdir /s /q data\chromadb
-
-# Linux/Mac
-rm -rf data/chromadb
-```
-
-### Issue: Slow response times
-**Solution:** Try a faster GROQ model in `.env`:
-```env
-LLM_MODEL=mixtral-8x7b-32768
-```
-
-## Testing Multi-Tenancy
-
-1. Generate data with multiple users:
-```bash
-python scripts/generate_data.py --users 3 --transactions 200
-```
-
-2. Ingest data for each user separately:
-```bash
-# Via Swagger UI at http://localhost:8000/docs
-# Upload the CSV and set different user_id for each
-```
-
-3. Query with different user_ids to verify isolation:
-```python
-import requests
-
-# User 1 query
-response = requests.post("http://localhost:8000/api/v1/chat", json={
-    "user_id": "user_001",
-    "query": "Show my expenses"
-})
-
-# User 2 query
-response = requests.post("http://localhost:8000/api/v1/chat", json={
-    "user_id": "user_002",
-    "query": "Show my expenses"
-})
-```
-
-## Docker Deployment
-
-### Build and Run
-```bash
-# Build the image
-docker-compose build
-
-# Start the service
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop the service
-docker-compose down
-```
-
-### Access the API
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-
-## Production Deployment Tips
-
-1. **Set DEBUG=False** in `.env`
-2. **Use environment-specific secrets** for API keys
-3. **Configure CORS** appropriately in `main.py`
-4. **Set up reverse proxy** (nginx) for HTTPS
-5. **Monitor logs** in `logs/` directory
-6. **Back up ChromaDB data** in `data/chromadb/`
-7. **Use orchestration** (Kubernetes) for scaling
-
-## Performance Optimization
-
-1. **Adjust batch sizes** for ingestion
-2. **Use faster embedding models** if needed
-3. **Increase ChromaDB cache** for large datasets
-4. **Scale horizontally** with load balancer
-5. **Use GPU** for faster embeddings (optional)
-
-## Data Privacy
-
-- All data is stored locally in ChromaDB
-- No data is sent to third parties (except LLM API calls)
-- User data is isolated using metadata filters
-- GDPR-compliant deletion via `/user/{user_id}` endpoint
-
-## Next Steps
-
-1. ✅ Complete the setup above
-2. 📊 Upload your own transaction CSV
-3. 💬 Ask financial questions via API
-4. 🔧 Customize agents for your use case
-5. 🚀 Deploy to production
-
-## Support
-
-- **Issues**: Create GitHub issue
-- **Questions**: Check documentation
-- **Community**: Join Discord (if available)
+Roughly 10–20 minutes on CPU. Without it the application falls back to keyword
+rules, tagged `rules-v0` on every row it labels, and logs a warning at startup
+so the degradation is never silent.
 
 ---
 
-**Happy analyzing! 🎉**
+## Trying it out
+
+```bash
+# 1. Register
+curl -X POST localhost:8000/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"Correct-Horse-Battery-9!"}'
+# -> {"access_token": "...", "refresh_token": "..."}
+
+TOKEN=<access_token>
+
+# 2. Import a statement
+curl -X POST localhost:8000/api/v1/transactions/import \
+  -H "Authorization: Bearer $TOKEN" \
+  -F 'file=@statement.csv'
+
+# 3. Read it back
+curl localhost:8000/api/v1/analysis/summary -H "Authorization: Bearer $TOKEN"
+```
+
+The CSV needs `date`, `amount`, `description` columns. Negative amounts are
+outflows.
+
+### Linking a bank account (sandbox)
+
+Bank linkage requires MFA — a password alone must not be able to attach a bank
+account.
+
+```bash
+# Enrol TOTP
+curl -X POST localhost:8000/api/v1/auth/mfa/enrol -H "Authorization: Bearer $TOKEN"
+# -> {"secret": "...", "provisioning_uri": "otpauth://..."}
+
+# Confirm with a code from your authenticator
+curl -X POST localhost:8000/api/v1/auth/mfa/confirm \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"code":"123456"}'
+# -> a new, MFA-satisfied token pair
+
+# Request consent, then approve and fetch
+curl -X POST localhost:8000/api/v1/aa/consents \
+  -H "Authorization: Bearer $MFA_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"purpose_code":"101","fi_types":["DEPOSIT"],"customer_aa_id":"9876543210@onemoney"}'
+```
+
+**Sandbox only.** See the README — FinGuru is not an RBI-registered FIU.
+
+---
+
+## Verifying tenant isolation yourself
+
+Worth doing once, because it is the claim everything else rests on.
+
+```bash
+# Register two users, import data as the first, query as the second.
+# The second sees nothing, and no parameter changes that.
+curl "localhost:8000/api/v1/transactions?user_id=<first-user-id>" \
+  -H "Authorization: Bearer $SECOND_USER_TOKEN"
+# -> []   (the query parameter is ignored; the subject is the token)
+```
+
+Or go under the application entirely:
+
+```bash
+docker exec -it finguru_postgres psql -U finguru_app -d finguru
+```
+
+```sql
+SELECT count(*) FROM transactions;              -- 0: no tenant bound
+SELECT set_config('app.current_user_id', '<some-uuid>', false);
+SELECT count(*) FROM transactions;              -- only that user's rows
+```
+
+The automated version is `pytest tests/test_rls_isolation.py -v`.
+
+---
+
+## Tests
+
+```bash
+docker compose up -d postgres redis
+alembic upgrade head
+python -m pytest tests/ -v
+```
+
+The suite runs against real PostgreSQL and Redis. Tests needing the database
+skip **loudly** if it is unreachable rather than passing silently — a green run
+that skipped the isolation tests would be worse than a red one.
+
+---
+
+## Troubleshooting
+
+**`connection refused` on port 55432**
+The compose stack uses non-default host ports (55432, 56379) so it cannot
+collide with a Postgres or Redis already on the machine. Check
+`docker compose ps`.
+
+**`new row violates row-level security policy`**
+The session has no tenant bound. Application code should use
+`tenant_session(user_id)` or the `get_tenant_session` dependency;
+`system_session()` deliberately does not bypass RLS.
+
+**Tests fail with "Future attached to a different loop"**
+`pytest.ini` sets `asyncio_default_test_loop_scope = session`. That is required,
+not cosmetic: asyncpg connections are bound to the loop that created them, and
+the application holds one process-wide pool.
+
+**Every RLS test passes but you suspect it shouldn't**
+Check which role you are connected as:
+
+```sql
+SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;
+```
+
+Both booleans must be false. If either is true, RLS is inert and every
+isolation test is passing for the wrong reason.
+`tests/test_rls_isolation.py::test_app_role_cannot_bypass_rls` asserts exactly
+this, for exactly this reason.
+
+**Categoriser is slow on the first request**
+The transformer loads lazily — roughly 2–3 seconds on first use, then cached.
+
+**Rate limited (429) while load testing**
+The general limiter is 60 requests/minute per client. That is the limiter
+working. Raise `GENERAL_RATE_LIMIT_PER_MINUTE` if you are profiling the
+application rather than the limiter.
+
+---
+
+## Deployment
+
+See `PRODUCTION_DEPLOYMENT.md`, and run:
+
+```bash
+ENVIRONMENT=production python scripts/production_deploy_check.py
+```
+
+It exits non-zero and refuses to deploy on an unsafe configuration — a
+development JWT secret, `CORS=*`, a placeholder database password, an
+application role that can bypass RLS, or a categoriser below the macro-F1
+floor.

@@ -3,12 +3,11 @@ ChromaDB Vector Store Manager with Multi-Tenant Security.
 Implements secure data isolation per user.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from chromadb.utils import embedding_functions
 import pandas as pd
-from datetime import datetime
 import time
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -48,10 +47,8 @@ class VectorStoreManager:
         """Initialize or get the vector collection."""
         try:
             # Use sentence-transformers for embeddings (free, local)
-            self.embedding_function = (
-                embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name=settings.embedding_model
-                )
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=settings.embedding_model
             )
 
             # Get or create collection
@@ -124,8 +121,7 @@ class VectorStoreManager:
             elapsed = time.time() - start_time
 
             logger.info(
-                f"Ingested {len(documents)} transactions for user {user_id} "
-                f"in {elapsed:.2f}s"
+                f"Ingested {len(documents)} transactions for user {user_id} " f"in {elapsed:.2f}s"
             )
 
             return {
@@ -139,9 +135,7 @@ class VectorStoreManager:
             logger.error(f"Ingestion failed for user {user_id}: {e}")
             raise
 
-    def retrieve_context(
-        self, user_id: str, query: str, top_k: int = 10
-    ) -> Dict[str, Any]:
+    def retrieve_context(self, user_id: str, query: str, top_k: int = 10) -> Dict[str, Any]:
         """
         Retrieve relevant transaction context for a user query.
 
@@ -198,9 +192,7 @@ class VectorStoreManager:
         """
         try:
             # Get all documents for user
-            results = self.collection.get(
-                where={"user_id": user_id}, include=["metadatas"]
-            )
+            results = self.collection.get(where={"user_id": user_id}, include=["metadatas"])
 
             if not results["metadatas"]:
                 logger.warning(f"No transactions found for user {user_id}")

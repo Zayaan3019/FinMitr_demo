@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from pyod.models.iforest import IForest
 
+
 # Example: Isolation Forest anomaly detection
 def detect_anomalies(data: pd.Series) -> pd.Series:
     model = IForest()

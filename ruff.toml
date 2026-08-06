@@ -1,0 +1,102 @@
+# Lint configuration.
+#
+# The ruleset is chosen to catch *defects*, not to enforce a house style. Ruff's
+# default selection includes modernisation rules (UP, FURB) that produce
+# hundreds of findings on this tree without identifying a single bug -- and a
+# lint gate that reports 864 issues is a lint gate everyone learns to ignore,
+# which is worse than not having one.
+#
+# Formatting is `black`'s job and is checked separately.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes -- undefined names, unused imports, f-strings without placeholders
+    "B",    # flake8-bugbear -- mutable defaults, loop-variable capture, etc.
+    "S",    # flake8-bandit -- hardcoded secrets, weak hashes, subprocess misuse
+    "ASYNC",# blocking calls inside async functions
+    "T20",  # stray print() in application code
+]
+
+ignore = [
+    "E501",  # line length -- black handles it, and long URLs in comments are fine
+    "B008",  # function call in argument default: this is exactly how FastAPI
+             # dependencies are declared (`= Depends(...)`, `= Query(...)`)
+    "S101",  # `assert` -- see the per-file override below
+
+    # S105 flags any string assigned to a name containing "token"/"secret".
+    # Every hit in this tree is a *name*, not a value: `token_type: str =
+    # "bearer"` (an OAuth response field), the `TOKEN_REFRESHED` audit-action
+    # constant, and the comparison against the known-bad development JWT
+    # placeholder in `validate_production_settings` -- which exists precisely
+    # to reject it. Real secrets come from the environment; the deploy check
+    # and startup validation are what enforce that.
+    "S105",
+
+    # 0.0.0.0 as the default API_HOST. Correct in a container: binding to
+    # localhost would make the service unreachable from outside the pod. What
+    # limits exposure is the Service and NetworkPolicy, not the bind address.
+    "S104",
+
+    # try/except/pass and try/except/continue. Every site was reviewed and each
+    # is a deliberate probe rather than a swallowed failure:
+    #   core/crypto.py     -- base64 format detection, falls through to the
+    #                         raw-bytes and derived forms
+    #   core/logging.py    -- stream reconfiguration fallback; if this raised we
+    #                         would have no logger to report it with
+    #   redis_client.py    -- best-effort close during shutdown
+    #   llm/schema_guard   -- tries several candidate JSON spans in a model
+    #                         response; most are *meant* to fail, and falling
+    #                         off the end raises SchemaViolation
+    # Each carries a comment saying so. Re-enable this rule if a new
+    # `except: pass` appears without one.
+    "S110", "S112",
+
+    # `raise HTTPException(...) from exc` inside an except block. The chain is
+    # not lost in practice: the global handler in main.py logs with
+    # exc_info=True, and these sites deliberately convert internal exceptions
+    # into generic client-facing messages so SQL fragments and stack frames --
+    # which in this application quote somebody's transaction data -- never
+    # reach the response body.
+    "B904",
+]
+
+[lint.per-file-ignores]
+# Tests are all assertions, print diagnostics, and deliberately weak test
+# credentials. Bandit rules there generate noise, not findings.
+# B017 (`pytest.raises(Exception)`) is allowed in tests that assert a
+# *cryptographic* failure -- AES-GCM tag mismatch and X25519 key mismatch
+# surface as several different library exceptions depending on version, and
+# pinning one would make the test fragile without making it stronger.
+"tests/**" = ["S", "T20", "B011", "B017"]
+
+# Operator-facing scripts print by design; that is their entire output.
+# S603/S607 are the pg_dump and pg_restore subprocess calls in backup.py --
+# fixed argument lists built from parsed configuration, never from user input.
+# S311 is `random` used to generate synthetic evaluation data, which is not a
+# cryptographic use; the AA key material uses `os.urandom` via `cryptography`.
+"scripts/**" = ["T20", "S603", "S607", "S311"]
+
+# The AA mock transport simulates a counterparty's data with `random`. Same
+# reasoning: it is test-shaped data generation, not key material.
+"app/aa/client.py" = ["S311"]
+"app/ml/dataset.py" = ["S311"]
+
+# Unmounted legacy modules. Not linted because they are not in the request
+# path and are documented as unrouted in the README -- linting them would
+# imply they are maintained. If either is ever wired up, delete its entry here
+# first and fix what surfaces.
+"app/timeseries/**" = ["ALL"]
+"app/agents/causal/**" = ["ALL"]
+
+# Alembic migrations are generated-shaped and intentionally use raw SQL.
+"alembic/**" = ["E", "F401", "S608"]
+
+[lint.flake8-bandit]
+# The AA client and the LLM client legitimately construct requests from
+# configuration; `S105`/`S106` false-positive on parameter names like
+# `token_prefix`.
+check-typed-exception = true
