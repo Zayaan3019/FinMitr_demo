@@ -96,10 +96,15 @@ Works on RDS, Cloud SQL and Azure Database. Requirements:
   `rds_superuser`; on Cloud SQL, `cloudsqlsuperuser`. If your provider forbids
   it, create `finguru_app` by hand with `NOSUPERUSER NOBYPASSRLS` first and
   the migration will use it.
-- **connection pooler in transaction mode is fine**, but set
-  `server_settings` carefully: the tenant GUC is session-scoped, and
-  `tenant_session` pins one connection for its lifetime precisely so pooling
-  cannot separate the `SET` from the queries that depend on it.
+- **a connection pooler must run in session mode, not transaction mode.**
+  The tenant GUC is session-scoped and is committed in its own transaction
+  before the queries that depend on it. `tenant_session` pins one *client*
+  connection, which keeps SQLAlchemy's pool from separating the `SET` from
+  the queries. But PgBouncer in transaction mode assigns a server connection
+  per transaction, so the queries could run on a server connection with no
+  tenant bound (zero rows) or with another tenant's leftover value. Use
+  `pool_mode = session`, or switch to `SET LOCAL` in every transaction
+  before using transaction pooling.
 
 ### Partitions
 

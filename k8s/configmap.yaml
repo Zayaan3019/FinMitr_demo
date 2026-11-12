@@ -26,8 +26,9 @@ data:
   REDIS_REQUIRED: "true"
 
   # Connection pool per pod. Multiply by replica count and stay under the
-  # server's max_connections; put PgBouncer in transaction mode in front if
-  # that gets tight.
+  # server's max_connections; if that gets tight, put PgBouncer in front in
+  # SESSION mode (the tenant GUC is session-scoped; transaction mode would
+  # separate it from the queries -- see PRODUCTION_DEPLOYMENT.md).
   DB_POOL_SIZE: "10"
   DB_MAX_OVERFLOW: "20"
 

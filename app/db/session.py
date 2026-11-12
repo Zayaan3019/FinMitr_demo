@@ -45,8 +45,13 @@ def get_engine() -> AsyncEngine:
             max_overflow=settings.db_max_overflow,
             pool_timeout=settings.db_pool_timeout,
             pool_pre_ping=True,
-            # Server-side statement cache must be disabled when a pooler such
-            # as PgBouncer sits in front; harmless otherwise.
+            # Pooler note: the tenant GUC is session-scoped (see set_rls_user),
+            # so a pooler in front of PostgreSQL must run in SESSION mode.
+            # PgBouncer in transaction mode can hand each transaction a
+            # different server connection, separating the SET from the
+            # queries that rely on it. Supporting transaction mode would mean
+            # SET LOCAL inside every transaction (and disabling asyncpg's
+            # statement cache).
             connect_args={"server_settings": {"application_name": "finguru"}},
         )
         logger.info("Async database engine created")
