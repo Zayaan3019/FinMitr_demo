@@ -368,6 +368,11 @@ _LEAK_PATTERNS: List[Tuple[str, Pattern[str]]] = [
     ("pan", _c(r"\b[A-Z]{5}\d{4}[A-Z]\b")),
     ("ifsc", _c(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")),
     ("email", _c(r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b")),
+    # UPI VPA: handle@psp with no domain suffix (asha@okaxis, 98xxxxxx@ybl).
+    # Deliberately broader than the redactor's own VPA rule, so the guard does
+    # not inherit its blind spots: any PSP handle counts, and an email
+    # (which has a ".tld" after the handle) is left to the email rule.
+    ("upi_vpa", _c(r"\b[a-z0-9._+-]{2,256}@[a-z][a-z0-9]{1,63}\b(?![.-]?[a-z0-9])")),
     ("phone", _c(r"(?:\+91[\s-]?)?\b[6-9]\d{9}\b")),
 ]
 

@@ -173,6 +173,32 @@ def test_the_egress_guard_raises_rather_than_sending():
     assert_no_pii("Please review account [ACCT_1] for the user")
 
 
+@pytest.mark.parametrize("vpa", [
+    "rahul.sharma@okhdfcbank",   # the redactor's own pattern covers this one
+    "priya@ybl",
+    "9876543210@paytm",
+    "shop.owner@someNewBank",    # an unfamiliar PSP: the guard must not need a list
+])
+def test_the_egress_guard_catches_a_upi_vpa(vpa):
+    """
+    A UPI VPA is an identifier (it names a person's bank account), so the
+    fail-closed guard must catch one that slipped past redaction, on its own
+    rule rather than by trusting the redactor's.
+    """
+    from app.llm.redaction import PIIEgressError, assert_no_pii, find_pii_leaks
+
+    with pytest.raises(PIIEgressError):
+        assert_no_pii(f"Spent 450 at UPI/P2A/{vpa}/Rent last week")
+    assert any(kind == "upi_vpa" for kind, _ in find_pii_leaks(f"paid {vpa} today"))
+
+
+def test_the_vpa_rule_leaves_emails_and_placeholders_alone():
+    from app.llm.redaction import find_pii_leaks
+
+    kinds = [k for k, _ in find_pii_leaks("mail ramesh.k@gmail.com about [VPA_1]")]
+    assert kinds == ["email"]
+
+
 @pytest.mark.db
 async def test_no_pii_reaches_the_provider_in_a_full_advisory_call(alice):
     """
